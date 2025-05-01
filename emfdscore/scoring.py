@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 
 from sklearn.feature_extraction import text
 import spacy
+from spacy.tokens import Doc
 from spacy.lang.en.stop_words import STOP_WORDS
 from spacy.language import Language
 import warnings
@@ -10,7 +11,8 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 from collections import Counter
 from emfdscore.load_mfds import *
-import progressbar
+# import progressbar
+from tqdm.auto import tqdm
 
 try:
     nltk_stopwords = stopwords.words('english')
@@ -72,7 +74,8 @@ def score_emfd_all_sent(doc):
         except ZeroDivisionError:
             emfd_score['moral_nonmoral_ratio'] = len(moral_words) / 1
     
-    return emfd_score
+    doc.user_data["score"] = emfd_score
+    return doc
 
 @Language.component("score_emfd_single_sent")
 def score_emfd_single_sent(doc):
@@ -239,17 +242,17 @@ def score_docs(csv, dic_type, prob_map, score_type, out_metrics, num_docs):
     Accepted values are: [emfd, mfd, mfd2]"""
 
     if score_type == 'wordlist':
-        widgets = [
+        """ widgets = [
             'Processed: ', progressbar.Counter(),
             ' ', progressbar.Percentage(),
             ' ', progressbar.Bar(marker='❤'),
             ' ', progressbar.Timer(),
             ' ', progressbar.ETA(),
-        ]
+        ] """
 
-        with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
+        with tqdm(total=num_docs) as bar:
             moral_words = []
-            for i, row in csv[0].iteritems():
+            for i, row in csv[0].items():
                 if row in emfd.keys():
                     moral_words.append(emfd[row])
                 else:
@@ -281,15 +284,15 @@ def score_docs(csv, dic_type, prob_map, score_type, out_metrics, num_docs):
             return df
 
     if score_type == 'gdelt.ngrams':
-        widgets = [
+        """ widgets = [
             'Processed: ', progressbar.Counter(),
             ' ', progressbar.Percentage(),
             ' ', progressbar.Bar(marker='❤'),
             ' ', progressbar.Timer(),
             ' ', progressbar.ETA(),
-        ]
+        ] """
 
-        with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
+        with tqdm(total=num_docs) as bar:
             moral_words = []
             word_frequncies = []
             for i, row in csv.iterrows():
@@ -345,19 +348,23 @@ def score_docs(csv, dic_type, prob_map, score_type, out_metrics, num_docs):
         return 
 
     scored_docs = []
-    widgets = [
+    """ widgets = [
         'Processed: ', progressbar.Counter(),
         ' ', progressbar.Percentage(),
         ' ', progressbar.Bar(marker='❤'),
         ' ', progressbar.Timer(),
         ' ', progressbar.ETA(),
-    ]
+    ] """
 
     
-    with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
-        for i, row in csv[0].iteritems():
-            scored_docs.append(nlp(row))
-            bar.update(i)
+    # with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
+    docs = nlp.pipe(csv[0].values, n_process=1)
+    scored_docs = []
+    for doc in tqdm(docs, total=num_docs):
+        scored_docs.append(doc.user_data['score'])
+    
+    """ for i, row in tqdm(csv[0].items(), total=num_docs):
+        scored_docs.append(nlp(row).user_data['score']) """
 
     df = pd.DataFrame(scored_docs)
     
@@ -554,16 +561,16 @@ def pat_docs(csv,num_docs):
     nlp.add_pipe("mean_pat")
     
     scored_docs = []
-    widgets = [
+    """ widgets = [
         'Processed: ', progressbar.Counter(),
         ' ', progressbar.Percentage(),
         ' ', progressbar.Bar(marker='❤'),
         ' ', progressbar.Timer(),
         ' ', progressbar.ETA(),
-    ]
+    ] """
     
-    with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
-        for i, row in csv[0].iteritems():
+    with tqdm(total=num_docs) as bar:
+        for i, row in csv[0].items():
             scored_docs.append(nlp(row))
             bar.update(i)
             
