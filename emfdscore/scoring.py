@@ -32,7 +32,7 @@ def tokenizer(doc):
     stopword/punctuation/whitespace removal. 
     Returns list of processed tokens"""
     
-    return [x.lower_ for x in doc if x.lower_ not in stopwords and not x.is_punct and not x.is_digit and not x.is_quote and not x.like_num and not x.is_space]
+    return Doc(vocab=doc.vocab,words=[x.lower_ for x in doc if x.lower_ not in stopwords and not x.is_punct and not x.is_digit and not x.is_quote and not x.like_num and not x.is_space])
 
 @Language.component("score_emfd_all_sent")
 def score_emfd_all_sent(doc):
@@ -44,7 +44,7 @@ def score_emfd_all_sent(doc):
     emfd_score = {k: 0 for k in probabilites+senti}
 
     # Collect e-MFD data for all moral words in document
-    moral_words = [emfd[token] for token in doc if token in emfd.keys()]
+    moral_words = [emfd[token.text] for token in doc if token.text in emfd.keys()]
     
     for dic in moral_words:
         emfd_score['care_p'] += dic['care_p']
@@ -235,11 +235,13 @@ def score_mfd2(doc):
     return mfd2_score
 
 
-def score_docs(csv, dic_type, prob_map, score_type, out_metrics, num_docs):
+def score_docs(csv, dic_type, prob_map, score_type, out_metrics, n_processes=-1, batch_size=1):
     
     """Wrapper function that executes functions for preprocessing and dictionary scoring.
     dict_type specifies the dicitonary with which the documents should be scored.
     Accepted values are: [emfd, mfd, mfd2]"""
+
+    num_docs = len(csv[0])
 
     if score_type == 'wordlist':
         """ widgets = [
@@ -358,7 +360,7 @@ def score_docs(csv, dic_type, prob_map, score_type, out_metrics, num_docs):
 
     
     # with progressbar.ProgressBar(max_value=num_docs, widgets=widgets) as bar:
-    docs = nlp.pipe(csv[0].values, n_process=1)
+    docs = nlp.pipe(csv[0].values, n_process=n_processes, batch_size=batch_size)
     scored_docs = []
     for doc in tqdm(docs, total=num_docs):
         scored_docs.append(doc.user_data['score'])
